@@ -1,0 +1,66 @@
+# NewsLens — Render blueprint (backend FastAPI service)
+#
+# This is a convenience, declarative form of docs/DEPLOYMENT.md §B (the source
+# of truth). It does NOT replace or contradict that runbook — it automates the
+# same settings. Deploy order per DEPLOYMENT.md: A (managed Postgres/Supabase)
+# -> B (this backend) -> C (Vercel frontend).
+#
+# SECURITY: no secret VALUES are stored here.
+#   * SECRET_KEY uses `generateValue` (Render generates a strong random secret
+#     on the platform; it never lives in Git).
+#   * DATABASE_URL / ALEMBIC_DATABASE_URL / CORS_ORIGINS / PUBLIC_FRONTEND_URL
+#     are `sync: false`, meaning you set their real values once in the Render
+#     Dashboard -> Environment. The app refuses to boot on a default secret.
+#   * The PostgreSQL database is EXTERNAL (Supabase per the chosen architecture,
+#     or any managed PG). Render does not provision it; connect via the two
+#     DATABASE URLs above. Keep the DB port private (see DEPLOYMENT.md §B).
+
+services:
+  - type: web
+    name: newslens-backend
+    # Backend is a stateful ASGI app (background collection + per-transaction PG
+    # session GUCs) -> always-on service, not a request-scoped function host.
+    runtime: docker
+    rootDir: backend           # Docker build context = backend/ (Dockerfile lives here)
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon             # change to your nearest Render region
+    branch: master
+    autoDeploy: true
+    # Matches backend/app/api/routes/health.py -> 503 if the DB is unreachable.
+    healthCheckPath: /api/health/ready
+    # Runs Alembic as the OWNER role (needs DDL) before traffic shifts.
+    # The runtime app itself connects as the NON-OWNER `newslens_app` role so RLS binds it.
+    preDeployCommand: "alembic upgrade head"
+
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true          # strong random secret created by Render; never in Git
+      - key: RLS_APP_ROLE
+        value: newslens_app
+      - key: ENABLE_TOPIC_MODEL
+        value: "true"                # optional ML topic fallback
+      # ---- set the real values for these in the Render Dashboard (not in Git) ----
+      - key: DATABASE_URL            # postgresql+psycopg://newslens_app:<app-pw>@<pg-host>:5432/newslens
+        sync: false
+      - key: ALEMBIC_DATABASE_URL    # postgresql+psycopg://<owner>:<owner-pw>@<pg-host>:5432/newslens
+        sync: false
+      - key: CORS_ORIGINS            # https://<vercel-app>.vercel.app  (explicit; no *, no localhost)
+        sync: false
+      - key: PUBLIC_FRONTEND_URL     # https://<vercel-app>.vercel.app
+        sync: false
+      # ---- optional integration secrets (leave unset to use safe dev fallbacks) ----
+      - key: GNEWS_API_KEY
+        sync: false
+      - key: NEWSDATA_API_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false

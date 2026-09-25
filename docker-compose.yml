@@ -1,0 +1,76 @@
+# ============================================================
+# NewsLens - local/production-ish compose stack
+#   db       PostgreSQL 16 (override with a Supabase URI via DATABASE_URL)
+#   backend  FastAPI + Uvicorn (runs Alembic migrations on boot)
+#   frontend nginx serving the Vite build + /api reverse proxy
+#
+# Secrets come from a root `.env` file (git-ignored). Never commit real keys.
+#   docker compose --env-file .env up --build
+# ============================================================
+name: newslens
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: newslens
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-newslens_dev_pw}
+      POSTGRES_DB: newslens
+      # Password for the NON-owner runtime role the backend connects as, so
+      # PostgreSQL RLS actually binds the application (see the Phase-11 P0 fix).
+      # Consumed by the init script below at first boot only.
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-newslens_app_dev_pw}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      # Provisions the separate `newslens_app` login (NOBYPASSRLS) on first init.
+      - ./backend/migrations/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U newslens -d newslens"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Expose only for local debugging; drop in a locked-down deployment.
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
+      # Runtime app connects as the NON-owner role -> RLS is enforced on it.
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://newslens_app:${APP_DB_PASSWORD:-newslens_app_dev_pw}@db:5432/newslens}
+      # Migrations need DDL + table-owner rights -> run as the owner role.
+      ALEMBIC_DATABASE_URL: ${ALEMBIC_DATABASE_URL:-postgresql+psycopg://newslens:${POSTGRES_PASSWORD:-newslens_dev_pw}@db:5432/newslens}
+      RLS_APP_ROLE: ${RLS_APP_ROLE:-newslens_app}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      PUBLIC_FRONTEND_URL: ${PUBLIC_FRONTEND_URL:-http://localhost:8080}
+      GNEWS_API_KEY: ${GNEWS_API_KEY:-}
+      NEWSDATA_API_KEY: ${NEWSDATA_API_KEY:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      LOG_JSON: ${LOG_JSON:-true}
+
+    # Apply migrations, then start the API. Falls back to create_all if Alembic
+    # is skipped (dev SQLite), but the explicit upgrade keeps schema in lock-step.
+    command: >
+      sh -lc "alembic upgrade head &&
+              uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  db_data:

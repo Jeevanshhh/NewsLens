@@ -1,0 +1,109 @@
+=== ENVIRONMENT ===
+python 3.14.6 | F:\Desktop\minor\backend\.venv\Scripts\python.exe
+sklearn 1.9.1
+numpy 2.5.3
+scipy 1.18.1
+joblib 1.6.0
+IMPORTS_OK in 206.57s
+
+=== DATASET ===
+raw_seed_corpus=396 deduped=396 classes=11
+dupes_removed=0 min=36 max=36 imbalance=1.0
+  class World          n=36
+  class Politics       n=36
+  class Business       n=36
+  class Technology     n=36
+  class Sports         n=36
+  class Health         n=36
+  class Science        n=36
+  class Entertainment  n=36
+  class Climate        n=36
+  class Crime          n=36
+  class Education      n=36
+split sizes: train=252 val=45 holdout=99 random_state=42
+tfidf={'sublinear_tf': True, 'ngram_range': (1, 2), 'min_df': 1, 'stop_words': 'english', 'lowercase': True} nb_alpha=0.1 threshold=0.3
+
+=== HOLDOUT EVALUATION (untouched 25%) ===
+accuracy_before_abstention=0.5859
+accuracy_after_abstention =0.2525
+macro P/R/F1    = 0.5807 / 0.5859 / 0.5719
+weighted P/R/F1 = 0.5807 / 0.5859 / 0.5719
+
+per-class:
+  World          P=0.583 R=0.778 F1=0.667 n=9
+  Politics       P=0.833 R=0.556 F1=0.667 n=9
+  Business       P=0.545 R=0.667 F1=0.600 n=9
+  Technology     P=0.500 R=0.556 F1=0.526 n=9
+  Sports         P=0.500 R=0.556 F1=0.526 n=9
+  Health         P=0.444 R=0.444 F1=0.444 n=9
+  Science        P=0.545 R=0.667 F1=0.600 n=9
+  Entertainment  P=0.750 R=0.667 F1=0.706 n=9
+  Climate        P=0.333 R=0.111 F1=0.167 n=9
+  Crime          P=0.625 R=0.556 F1=0.588 n=9
+  Education      P=0.727 R=0.889 F1=0.800 n=9
+
+confusion_matrix (rows=true ['World', 'Politics', 'Business', 'Technology', 'Sports', 'Health', 'Science', 'Entertainment', 'Climate', 'Crime', 'Education']):
+    7   0   1   0   0   0   0   0   1   0   0
+    1   5   0   0   0   1   0   0   0   2   0
+    0   0   6   2   0   1   0   0   0   0   0
+    1   0   1   5   0   0   1   0   0   1   0
+    0   0   1   0   5   0   0   1   1   0   1
+    0   0   1   0   1   4   2   0   0   0   1
+    0   0   1   0   0   1   6   1   0   0   0
+    0   0   0   0   3   0   0   6   0   0   0
+    2   0   0   2   1   2   1   0   1   0   0
+    1   1   0   0   0   0   1   0   0   5   1
+    0   0   0   1   0   0   0   0   0   0   8
+
+abstention: total=99 confident=34 abstained=65 rate=0.6566
+precision_on_confident_subset=0.7353
+confidence: mean=0.2789 min=0.0909 max=0.7512
+mean_confidence_by_class: {'Climate': 0.247, 'Entertainment': 0.342, 'Technology': 0.243, 'Science': 0.242, 'Politics': 0.285, 'World': 0.328, 'Crime': 0.319, 'Education': 0.322, 'Business': 0.23, 'Health': 0.224, 'Sports': 0.285}
+confidence_histogram (bin:count): {'[0.0,0.2)': 32, '[0.2,0.3)': 33, '[0.3,0.4)': 21, '[0.4,0.5)': 4, '[0.5,0.6)': 5, '[0.6,0.7)': 3, '[0.7,0.8)': 1, '[0.8,0.9)': 0, '[0.9,1.0)': 0}
+
+=== REAL-WORLD UNSEEN VALIDATION (production predict_topic path) ===
+total=29 exact=20 exact_accuracy=0.6897 acceptable_accuracy=0.6897
+  MISS exp=Business     got=Other        conf=0.000  'sensex nifty close'
+  MISS exp=Technology   got=Other        conf=0.172  'new iphone launch 5g'
+  MISS exp=Science      got=Other        conf=0.243  'mars rover water discovery'
+  MISS exp=Politics     got=Other        conf=0.279  'parliament winter session'
+  MISS exp=Sports       got=Other        conf=0.111  'cricket test centurion'
+  MISS exp=Technology   got=Other        conf=0.164  'Hackers leak customer database of major e-commerce site'
+  MISS exp=Climate      got=Other        conf=0.299  'Cyclone warning issued as coastal districts evacuate'
+  MISS exp=Entertainment got=Other        conf=0.148  'Streaming giant renews hit series for a third season'
+  MISS exp=Health       got=Other        conf=0.171  'Government unveils funding for hospital research labs'
+
+=== FULL PRODUCTION PIPELINE CHECK (rules -> ML fallback) ===
+rule-first hits on real-world set: 1 / 29 (rules are domain-specific, so general news correctly falls through to the ML stage)
+pipeline-stage outcomes: items=28 exact=19 acceptable=20/28 (=0.7143)
+  MISS exp=Business     final=Other        conf=0.000  'sensex nifty close'
+  OK exp=Sports       final=Sports       conf=0.675  't20 world cup final score'
+  MISS exp=Technology   final=Other        conf=0.172  'new iphone launch 5g'
+  OK exp=Climate      final=Climate      conf=0.607  'monsoon flood relief camps'
+  OK exp=Education    final=Education    conf=0.534  'cbse class 10 result date'
+  OK exp=Health       final=Health       conf=0.403  'covid vaccine booster dose'
+  MISS exp=Science      final=Other        conf=0.243  'mars rover water discovery'
+  OK exp=Entertainment final=Entertainment conf=0.541  'box office collection day one'
+  MISS exp=Politics     final=Other        conf=0.279  'parliament winter session'
+  OK exp=World        final=World        conf=0.798  'ceasefire border talks un'
+  OK exp=Business     final=Business     conf=0.352  'stock market crash'
+  OK exp=Technology   final=Technology   conf=0.751  'ai chatbot update'
+  MISS exp=Sports       final=Other        conf=0.111  'cricket test centurion'
+  OK exp=Business     final=Business     conf=0.814  'Central bank raises repo rate to fight rising inflation'
+  MISS exp=Technology   final=Other        conf=0.164  'Hackers leak customer database of major e-commerce site'
+  MISS exp=Climate      final=Other        conf=0.299  'Cyclone warning issued as coastal districts evacuate'
+  OK exp=Education    final=Education    conf=0.839  'Entrance exam admit card released for engineering aspirants'
+  OK exp=Health       final=Health       conf=0.450  'Health ministry approves new malaria vaccine for children'
+  OK exp=Science      final=Science      conf=0.626  'ISRO successfully test fires indigenously built cryogenic engine'
+  MISS exp=Entertainment final=Other        conf=0.148  'Streaming giant renews hit series for a third season'
+  OK exp=Politics     final=Politics     conf=0.452  'Opposition demands floor test after mass defections'
+  OK exp=World        final=World        conf=0.529  'Foreign troops withdrawn under the peace accord'
+  OK exp=Business     final=Business     conf=0.469  'Company lays off staff citing poor quarterly earnings'
+  OK exp=Climate      final=Climate      conf=0.436  'City shuts schools and offices on hazardous air quality'
+  OK exp=Health       final=Other        conf=0.171  'Government unveils funding for hospital research labs'
+  OK exp=Other        final=Other        conf=0.000  'wibbly frobnicate zzz quux'
+  OK exp=Other        final=Other        conf=0.000  'the quick brown fox jumps over'
+  OK exp=Other        final=Other        conf=0.000  'hello there how are you doing today'
+rule-priority probe: category='Other' exam='NEET UG' (rules handled, ML untouched)
+
+PHASE12_RUNNER_DONE

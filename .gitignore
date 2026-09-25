@@ -1,0 +1,78 @@
+# ---- Environment / secrets ----
+.env
+.env.*
+!.env.example
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---- Databases (dev SQLite) ----
+*.sqlite
+*.sqlite3
+*.db
+
+# ---- Node / frontend ----
+node_modules/
+frontend/dist/
+frontend/build/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---- Reports / exports / data ----
+exports/
+reports/
+*.csv
+*.xlsx
+*.pdf
+*.docx
+!docs/**/*.csv
+
+# ---- Google service account keys ----
+credentials.json
+service-account*.json
+secrets/
+
+# ---- Editors / OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---- Logs ----
+*.log
+logs/
+
+# ---- Local PostgreSQL / test / diagnostic artifacts (never commit) ----
+*.pid
+pgpass.conf
+.pgpass
+*_results.xml
+pg_results.xml
+ci_check.db
+# Reproducible evidence/runner scripts are intentionally kept tracked;
+# transient scratch output under backend/ is not.
+backend/_*.txt
+backend/_*.log
+
+# ---- Vercel CLI (local auth / build artifacts, never commit) ----
+.vercel/
+.vercel-tmp/
+
+# ---- Local exploratory notebooks (not part of the NewsLens app) ----
+/CJP Protest News Scraping.ipynb
+*.ipynb_checkpoints/

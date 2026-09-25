@@ -1,0 +1,37 @@
+# ---- Python build/runtime cruft ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---- Secrets & local config (never bake into the image) ----
+.env
+.env.*
+!.env.example
+
+# ---- Local databases & data ----
+*.sqlite
+*.sqlite3
+*.db
+data/
+exports/
+reports/
+
+# ---- Logs & test/eval artifacts ----
+*.log
+logs/
+*_results.xml
+pg_results.xml
+
+# ---- VCS / editors ----
+.git/
+.gitignore
+.vscode/
+.idea/

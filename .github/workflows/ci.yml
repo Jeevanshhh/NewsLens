@@ -1,0 +1,66 @@
+# ============================================================
+# NewsLens CI - backend tests + migration check, frontend build
+# Runs on every push and PR. No deploy step here (see Phase 9 notes).
+# ============================================================
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  backend:
+    name: Backend (pytest + Alembic)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify migrations upgrade + downgrade (SQLite)
+        env:
+          DATABASE_URL: sqlite:///./ci_check.db
+        run: |
+          alembic upgrade head
+          alembic downgrade base
+
+      - name: Run tests
+        env:
+          # Deterministic offline test settings.
+          ENABLE_TOPIC_MODEL: "false"
+          SECRET_KEY: ci-test-secret-not-for-prod
+        run: python -m pytest -q
+
+  frontend:
+    name: Frontend (typecheck + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check and build
+        run: npm run build

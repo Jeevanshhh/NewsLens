@@ -1,0 +1,63 @@
+# ============================================================
+# Phase 1 - Backend foundation dependencies ONLY.
+# Data-processing / DB / auth / export deps are added in their
+# own phases to avoid pulling unnecessary packages early.
+#
+# NOTE: Running on Python 3.14 (bleeding edge). We use floor
+# constraints here so pip resolves versions that ship cp314
+# binary wheels (avoids fragile source builds, e.g. pydantic-core).
+# After a verified install we freeze an exact lock for reproducibility.
+# ============================================================
+
+# ---- Web framework ----
+fastapi>=0.109
+starlette>=0.35
+uvicorn[standard]>=0.27
+
+# ---- Config / validation / env ----
+pydantic>=2.11
+pydantic-settings>=2.7
+python-dotenv>=1.0
+
+# ---- Auth (Phase 12) ----
+# PyJWT is pure-Python and its HS256 path needs no `cryptography` backend
+# (safer on Python 3.14); passwords use the stdlib hashlib.scrypt KDF.
+PyJWT>=2.9
+
+# ---- Data collection (Phase 2: news providers) ----
+requests>=2.32
+feedparser>=6.0
+
+# ---- Processing pipeline (Phase 3) ----
+python-dateutil>=2.9
+
+# ---- Topic classification (supervised ML fallback) ----
+# app.services.processing.news_topics trains a TF-IDF + ComplementNB pipeline
+# at first use. These MUST be declared explicitly: the classifier previously
+# relied on packages that happened to be present in the shared interpreter, so a
+# clean install silently degraded every general-news item to "Other".
+# Floors chosen so pip resolves cp314 binary wheels (see header note).
+scikit-learn>=1.7
+numpy>=2.3
+scipy>=1.16
+joblib>=1.5
+threadpoolctl>=3.6
+
+# ---- Database (Phase 4) ----
+# Floor raised: SQLAlchemy < 2.0.40 fails to import on Python 3.14
+# (TypingOnly assertion on the new __static_attributes__ class attrs).
+SQLAlchemy>=2.0.40
+alembic>=1.14
+# PostgreSQL driver, needed only when DATABASE_URL points at Postgres/Supabase.
+# Development and the offline test-suite run on SQLite, so this is NOT required
+# locally; install it for a Postgres deployment.
+psycopg[binary]>=3.2 ; platform_python_implementation == 'CPython'
+
+# ---- Export engine (Phase 9) ----
+openpyxl>=3.1
+python-docx>=1.1
+reportlab>=4.2
+
+# ---- Testing ----
+pytest>=8.0
+httpx>=0.23
