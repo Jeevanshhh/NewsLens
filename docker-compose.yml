@@ -53,11 +53,10 @@ services:
       SENTRY_DSN: ${SENTRY_DSN:-}
       LOG_JSON: ${LOG_JSON:-true}
 
-    # Apply migrations, then start the API. Falls back to create_all if Alembic
-    # is skipped (dev SQLite), but the explicit upgrade keeps schema in lock-step.
-    command: >
-      sh -lc "alembic upgrade head &&
-              uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    # Startup order lives in the image itself (backend/entrypoint.sh):
+    # `alembic upgrade head` runs first and only then uvicorn is exec'd, so no
+    # `command:` override is needed here (and a custom one would still be
+    # gated by the migrations, which is the intended contract).
     depends_on:
       db:
         condition: service_healthy

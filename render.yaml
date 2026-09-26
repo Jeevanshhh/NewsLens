@@ -29,9 +29,13 @@ services:
     autoDeploy: true
     # Matches backend/app/api/routes/health.py -> 503 if the DB is unreachable.
     healthCheckPath: /api/health/ready
-    # Runs Alembic as the OWNER role (needs DDL) before traffic shifts.
-    # The runtime app itself connects as the NON-OWNER `newslens_app` role so RLS binds it.
-    preDeployCommand: "alembic upgrade head"
+    # NOTE: no preDeployCommand - Render FREE plan does not support it.
+    # Alembic migrations run inside the container at startup instead, gated
+    # before uvicorn: backend/entrypoint.sh executes `alembic upgrade head`
+    # (as the OWNER connection via ALEMBIC_DATABASE_URL) and only execs the
+    # API server if migrations exit 0; on failure the container exits non-zero
+    # and the deploy fails visibly. The runtime app keeps connecting as the
+    # NON-OWNER `newslens_app` role so RLS binds it (Phase-11 design intact).
 
     envVars:
       - key: APP_ENV

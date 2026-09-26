@@ -27,10 +27,15 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Application code + migrations.
+# Application code + migrations + startup entrypoint.
 COPY app ./app
 COPY alembic.ini ./
 COPY migrations ./migrations
+COPY entrypoint.sh ./
+
+# The repo may carry Windows CRLF endings; normalise and make executable so
+# /bin/sh can run it inside the (Linux) image. Ownership is fixed next.
+RUN sed -i 's/\r$//' /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
 # Run as an unprivileged user.
 RUN useradd --create-home --uid 10001 appuser \
@@ -50,5 +55,11 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -fsS "http://127.0.0.1:${APP_PORT}/api/health/ready" || exit 1
 
+# Startup contract (see entrypoint.sh): `alembic upgrade head` gates the
+# server - uvicorn is exec'd only if migrations exit 0. This replaces Render's
+# unsupported preDeployCommand on the FREE plan without changing behaviour:
+# Alembic still runs via ALEMBIC_DATABASE_URL (owner role) and the API via
+# DATABASE_URL (non-owner newslens_app role, RLS-bound).
 # Single worker by default; scale with replicas/threads at the platform layer.
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

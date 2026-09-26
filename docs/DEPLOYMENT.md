@@ -75,12 +75,26 @@ request-scoped function host. `backend/Dockerfile` is ready (reviewed in Phase 1
 | `GNEWS_API_KEY` / `NEWSDATA_API_KEY` | optional; Google News RSS needs none |
 | `SMTP_*` | optional; if unset, reset emails go to the in-memory dev outbox, never faked as sent |
 
-**Start / release commands:**
+**Start / migration flow (Render FREE plan):**
+
+Render's Free tier does **not** support a `preDeployCommand` / release phase, so
+migrations run **inside the container at startup** instead:
 
 ```
-release: alembic upgrade head
-start:   uvicorn app.main:app --host 0.0.0.0 --port 8000
+1. container starts        -> backend/entrypoint.sh (Dockerfile ENTRYPOINT)
+2. alembic upgrade head    -> owner connection via ALEMBIC_DATABASE_URL
+3. ONLY if step 2 exits 0  -> exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+4. if step 2 fails         -> container exits non-zero; deploy fails visibly,
+                              the API never serves traffic on an unmigrated schema
 ```
+
+Startup is therefore gated on a successful migration on every boot; `alembic
+upgrade head` is idempotent, so restarts are safe. The runtime app still
+connects as the non-owner `newslens_app` role (RLS-bound) via `DATABASE_URL` —
+the gating does not move the runtime onto owner credentials. On paid plans or
+other platforms (Railway/Fly) you *may* additionally keep an external release
+command (`alembic upgrade head`); it is no longer required and must not be
+relied on for Render Free.
 
 **Smoke test after deploy:**
 
