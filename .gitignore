@@ -34,7 +34,11 @@ yarn-debug.log*
 yarn-error.log*
 
 # ---- Reports / exports / data ----
+# Artifact directories/output files only. The real source package
+# backend/app/services/exports/ must stay tracked (Render image imports it),
+# so it is explicitly un-ignored here - narrowest possible exception.
 exports/
+!backend/app/services/exports/
 reports/
 *.csv
 *.xlsx
