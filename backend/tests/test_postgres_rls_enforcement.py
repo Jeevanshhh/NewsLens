@@ -332,3 +332,72 @@ def test_search_results_isolated_through_owning_search(pg_env, seeded):
         visible = s.execute(text(
             "SELECT search_id FROM search_results ORDER BY search_id")).scalars().all()
         assert visible == [s_a]  # only A's search linkage is reachable
+
+
+# ---- Defect 1 regression: search-scoped reads need the auth subject ---------
+def _link_search_to_articles(pg_env, search_id, article_ids):
+    seed = pg_env["seed"]()
+    seed.execute(
+        search_results.insert(),
+        [{"search_id": search_id, "article_id": aid} for aid in article_ids],
+    )
+    seed.commit()
+    seed.close()
+
+
+def test_search_scoped_article_listing_requires_subject(pg_env, seeded):
+    """The production code path behind ``GET /api/articles?search_id=`` (which
+    now establishes the RLS subject via ``get_current_user_optional``): the
+    search-scoped join over the ``search_results`` junction returns the owner's
+    rows ONLY when ``app.current_user_id`` is set, and nothing for anonymous."""
+    from app.services import article_repo
+
+    s_a = pg_env["seed"]().scalar(select(Search.id).where(Search.user_id == seeded["a"]))
+    _link_search_to_articles(pg_env, s_a, [seeded["article"]])
+
+    # Authenticated (owner) context -> the fix makes the junction reachable.
+    with _app_session(pg_env, seeded["a"]) as s:
+        items, total = article_repo.list_articles(s, search_id=s_a)
+        assert total == 1 and items[0]["id"] == seeded["article"]
+
+    # Anonymous context -> junction rows are invisible under RLS (empty result),
+    # exactly the pre-fix production symptom this test now guards against.
+    with _app_session(pg_env, None) as s:
+        items, total = article_repo.list_articles(s, search_id=s_a)
+        assert total == 0 and items == []
+
+
+def test_search_scoped_export_lookup_requires_subject(pg_env, seeded):
+    """``GET /api/export?search_id=`` does ``db.get(Search, search_id)``; under
+    RLS that only resolves for the owning subject (else 404 'search not found')."""
+    s_a = pg_env["seed"]().scalar(select(Search.id).where(Search.user_id == seeded["a"]))
+    with _app_session(pg_env, seeded["a"]) as s:
+        assert s.get(Search, s_a) is not None  # owner sees their search
+    with _app_session(pg_env, seeded["b"]) as s:
+        assert s.get(Search, s_a) is None  # another user cannot
+    with _app_session(pg_env, None) as s:
+        assert s.get(Search, s_a) is None  # anonymous cannot
+
+
+# ---- Defect 3 regression: runtime role may DELETE the users row --------------
+def test_runtime_role_can_delete_user(pg_env):
+    """Account deletion (right to erasure) ends in ``DELETE FROM users``. The
+    runtime role is non-owner / NOBYPASSRLS, so this needs an explicit DELETE
+    grant (``rls_sql.grant_statements``) - previously it was missing, causing a
+    500. ``users`` stays global / NOT under RLS; this asserts the *privilege*."""
+    seed = pg_env["seed"]()
+    victim = User(name="Delete me", email=f"del{uuid.uuid4().hex}@ex.com")
+    seed.add(victim)
+    seed.commit()
+    vid = victim.id
+    seed.close()
+
+    with _app_session(pg_env, vid) as s:  # subject value is irrelevant for users
+        result = s.execute(text("DELETE FROM users WHERE id = :id"), {"id": vid})
+        s.commit()
+        assert result.rowcount == 1  # DELETE succeeded -> grant present
+
+    check = pg_env["seed"]()
+    assert check.get(User, vid) is None
+    check.close()
+

@@ -15,8 +15,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
-from app.models import Search
+from app.api.deps import get_current_user_optional, get_db
+from app.models import Search, User
 from app.services import article_repo
 from app.services.exports import SUPPORTED_FORMATS, build_export
 from app.services.exports.common import FORMAT_MEDIA_TYPES
@@ -32,6 +32,7 @@ def _slug(text: str) -> str:
 @router.get("/export", summary="Export stored articles as csv/xlsx/pdf/docx")
 def export_articles(
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     format: str = Query("csv", description="|".join(SUPPORTED_FORMATS)),
     search_id: Optional[int] = Query(None, ge=1),
     provider: Optional[str] = Query(None),

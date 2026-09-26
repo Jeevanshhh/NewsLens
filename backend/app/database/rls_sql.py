@@ -134,9 +134,12 @@ def grant_statements(app_role: str) -> List[str]:
         f'GRANT USAGE ON SCHEMA public TO {role};',
         f'GRANT SELECT, INSERT, UPDATE, DELETE ON {writable} TO {role};',
         # Content + identity tables the app legitimately reads/writes for every
-        # user (global, not tenant-isolated).
+        # user (global, not tenant-isolated). ``users`` also needs DELETE so the
+        # account-deletion (right-to-erasure) flow can remove the identity row;
+        # it stays global/not-RLS-bound because auth must read it before any
+        # subject exists.
         f'GRANT SELECT, INSERT, UPDATE ON "articles" TO {role};',
-        f'GRANT SELECT, INSERT, UPDATE ON "users" TO {role};',
+        f'GRANT SELECT, INSERT, UPDATE, DELETE ON "users" TO {role};',
         # id sequences for the tables above (they are BIGSERIAL/SERIAL).
         f'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {role};',
     ]

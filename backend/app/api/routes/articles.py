@@ -6,7 +6,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_current_user_optional, get_db
+from app.models import User
 from app.services import article_repo
 
 router = APIRouter(tags=["articles"])
@@ -15,6 +16,7 @@ router = APIRouter(tags=["articles"])
 @router.get("/articles", summary="List stored articles")
 def list_articles(
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     provider: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
     state: Optional[str] = Query(None),

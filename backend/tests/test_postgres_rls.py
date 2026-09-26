@@ -14,8 +14,9 @@ from __future__ import annotations
 
 from sqlalchemy import func, select
 
+from app.api.deps import get_current_user_optional
 from app.core.config import Settings
-from app.database import rls
+from app.database import rls, rls_sql
 from app.models import User
 
 
@@ -32,6 +33,42 @@ def test_is_postgres_detection():
     assert Settings(database_url="sqlite:///./x.db").is_postgres is False
     assert Settings(database_url="postgresql+psycopg://u@h/db").is_postgres is True
     assert Settings(database_url="postgres://u@h/db").is_postgres is True
+
+
+def test_grant_statements_include_delete_on_users():
+    """Defect 3 guard (single source of truth): the runtime role must hold DELETE
+    on ``users`` or account deletion 500s. This runs with no live server, so the
+    privilege regression is caught even where PostgreSQL is unavailable. The
+    real-role enforcement is proven in test_postgres_rls_enforcement.py."""
+    grants = "\n".join(rls_sql.grant_statements("newslens_app"))
+    users_grant = next(line for line in grants.splitlines() if 'ON "users"' in line)
+    assert "DELETE" in users_grant
+
+
+def _depends_on_optional_auth(func) -> bool:
+    """True if the endpoint declares a parameter whose Depends() target is
+    ``get_current_user_optional`` (the wiring that establishes app.current_user_id
+    before the search_results junction join runs)."""
+    import inspect
+
+    from fastapi.params import Depends
+
+    for param in inspect.signature(func).parameters.values():
+        default = param.default
+        if isinstance(default, Depends) and default.dependency is get_current_user_optional:
+            return True
+    return False
+
+
+def test_search_scoped_routes_establish_rls_subject():
+    """Defect 1 guard: /api/articles and /api/export must depend on
+    get_current_user_optional so app.current_user_id is set before the junction
+    join runs. Without it the search-scoped reads return empty/404 under RLS."""
+    from app.api.routes.articles import list_articles
+    from app.api.routes.exports import export_articles
+
+    assert _depends_on_optional_auth(list_articles)
+    assert _depends_on_optional_auth(export_articles)
 
 
 def test_rls_setter_is_inert_on_sqlite(session):
