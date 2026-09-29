@@ -35,7 +35,7 @@ export default function ResultsPage() {
   const [provider, setProvider] = useState("");
   const [category, setCategory] = useState("");
   const [stateFilter, setStateFilter] = useState("");
-  const [sort, setSort] = useState("date_desc");
+  const [sort, setSort] = useState("newest");
   const [term, setTerm] = useState(""); // free-text filter within these results
   const [page, setPage] = useState(1);
 
@@ -223,8 +223,8 @@ export default function ResultsPage() {
             }}
             aria-label="Sort"
           >
-            <option value="date_desc">Newest first</option>
-            <option value="date_asc">Oldest first</option>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
           </select>
         </div>
       </div>

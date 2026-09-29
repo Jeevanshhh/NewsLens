@@ -80,3 +80,13 @@ backend/_*.log
 # ---- Local exploratory notebooks (not part of the NewsLens app) ----
 /CJP Protest News Scraping.ipynb
 *.ipynb_checkpoints/
+
+# ---- ML development artifacts (RIGHTS-UNVERIFIED article text: never commit) ----
+# Only reusable code/config is tracked; every data/model/report artifact that
+# embeds publisher article text or a trained classifier is excluded per Phase 18.
+backend/ml/datasets/
+backend/ml/models/
+backend/ml/reports/
+backend/ml/splits/
+*.jsonl
+*.joblib

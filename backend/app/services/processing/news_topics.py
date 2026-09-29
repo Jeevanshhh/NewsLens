@@ -21,6 +21,7 @@ are unaffected.
 """
 from __future__ import annotations
 
+import os
 import threading
 from typing import Optional, Tuple
 
@@ -63,12 +64,34 @@ def _build_model():
     return pipeline
 
 
+def _load_artifact():
+    """Optionally load a *saved* pipeline (development or future production
+    corpus) from ``NLENS_ML_MODEL_PATH``.
+
+    Off by default: when the env var is unset/missing we fall back to training on
+    the bundled SEED corpus, so current runtime behaviour and the deterministic
+    tests are unchanged. When set, the artifact is expected to be an sklearn
+    ``Pipeline`` exposing ``named_steps['tfidf']`` + ``predict_proba`` and built
+    with the SAME ``model_text.build_model_text`` preprocessing used in the
+    pipeline. Any load failure degrades gracefully to the SEED model.
+    """
+    path = (os.environ.get("NLENS_ML_MODEL_PATH") or "").strip()
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        import joblib
+
+        return joblib.load(path)
+    except Exception:  # pragma: no cover - corrupt/absent artifact
+        return None
+
+
 def _get_model():
     global _model
     if _model is None:
         with _lock:
             if _model is None:
-                _model = _build_model()
+                _model = _load_artifact() or _build_model()
     return _model
 
 

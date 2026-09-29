@@ -12,6 +12,11 @@ from app.schemas.processed_article import ProcessedArticle
 SORT_FIELDS = {
     "newest": Article.published_date.desc().nullslast(),
     "oldest": Article.published_date.asc().nullslast(),
+    # Explicit date aliases: the frontend (and any stored client params) may
+    # send date_desc/date_asc; without these keys they silently fell back to
+    # "newest", making "Oldest first" a no-op (QA bug N1, 2026-09-28).
+    "date_desc": Article.published_date.desc().nullslast(),
+    "date_asc": Article.published_date.asc().nullslast(),
     "category": Article.category.asc(),
     "state": Article.state.asc(),
     "source": Article.source.asc(),
@@ -94,7 +99,18 @@ def _apply_filters(stmt, filters: dict):
     if filters.get("source"):
         stmt = stmt.where(Article.source == filters["source"])
     if filters.get("language"):
-        stmt = stmt.where(Article.language == filters["language"])
+        lang = filters["language"]
+        # Articles are stored with the RSS locale tag (e.g. "en-IN"), while
+        # requests/saved searches default to the bare prefix ("en"). Exact
+        # equality made that combination return zero rows (QA bug, 2026-09-28);
+        # match the exact value OR the "<prefix>-<REGION>" form.
+        wildcards = ("%" in lang) or ("_" in lang)
+        if wildcards:
+            stmt = stmt.where(Article.language == lang)
+        else:
+            stmt = stmt.where(
+                or_(Article.language == lang, Article.language.like(f"{lang}-%"))
+            )
     if filters.get("country"):
         stmt = stmt.where(Article.country == filters["country"])
     if filters.get("name_of_exam"):

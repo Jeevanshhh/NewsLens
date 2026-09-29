@@ -7,6 +7,7 @@ apply when a date range is provided.
 """
 from __future__ import annotations
 
+import datetime
 from urllib.parse import quote
 
 import feedparser
@@ -54,7 +55,15 @@ def _build_query(ctx: SearchContext) -> str:
     if ctx.from_date:
         parts.append(f"after:{ctx.from_date}")
     if ctx.to_date:
-        parts.append(f"before:{ctx.to_date}")
+        # ``before:`` is exclusive at midnight, so a same-day range
+        # (from == to) was an empty interval and "today" searches always
+        # returned zero results. Shift the bound by +1 day to make the
+        # user's to_date inclusive (QA bug found in mass-search pass).
+        try:
+            end = datetime.date.fromisoformat(ctx.to_date) + datetime.timedelta(days=1)
+            parts.append(f"before:{end.isoformat()}")
+        except ValueError:
+            parts.append(f"before:{ctx.to_date}")
     return " ".join(p for p in parts if p)
 
 

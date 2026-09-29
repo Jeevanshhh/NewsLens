@@ -1,0 +1,27 @@
+{
+  "random_seed": 42,
+  "labels": [
+    "World",
+    "Politics",
+    "Business",
+    "Technology",
+    "Sports",
+    "Health",
+    "Science",
+    "Entertainment",
+    "Climate",
+    "Crime",
+    "Education",
+    "Other"
+  ],
+  "candidates": [
+    "A_unigram_CNB",
+    "B_unigram_LR",
+    "C_unigram_SVC",
+    "D_bigram_CNB",
+    "E_bigram_LR"
+  ],
+  "threshold_tuned_on": "validation",
+  "frozen_99_used_for_tuning": false,
+  "vectors": "see ml_config / news_topics_eval for shared defaults"
+}

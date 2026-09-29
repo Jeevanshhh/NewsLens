@@ -1,0 +1,67 @@
+{
+  "generated_at_utc": "2026-09-27T18:20:45.963318+00:00",
+  "development_dataset_id": "newslens_topic_dev_v0.1",
+  "development_rights_status": "RIGHTS_UNVERIFIED",
+  "required_rights": [
+    "storage_rights",
+    "ml_training_rights",
+    "commercial_use_rights",
+    "model_retention_rights",
+    "derived_dataset_rights",
+    "redistribution_rights"
+  ],
+  "sources": {
+    "newslens_google_news_local_corpus (dev 396)": {
+      "rights_status": "RIGHTS_UNVERIFIED",
+      "storage_rights": false,
+      "ml_training_rights": false,
+      "commercial_use_rights": false,
+      "model_retention_rights": false,
+      "derived_dataset_rights": false,
+      "redistribution_rights": false,
+      "attribution_requirement": "UNKNOWN",
+      "source_specific_restrictions": "Collected via Google News; publisher owns underlying content; Google does not licence publisher content for ML training.",
+      "agreement_reference": null,
+      "approval": "NOT_APPROVED",
+      "blocking_reason": "Publisher/ML-training rights never established; corpus is development/experimental only. Do not publish/commit/redistribute.",
+      "satisfies_required_rights": false
+    },
+    "GNews API": {
+      "rights_status": "TERMS_ADVERSE",
+      "storage_rights": true,
+      "ml_training_rights": false,
+      "commercial_use_rights": false,
+      "model_retention_rights": false,
+      "derived_dataset_rights": false,
+      "redistribution_rights": false,
+      "attribution_requirement": "UNKNOWN",
+      "source_specific_restrictions": "ToS prohibits systematically downloading/storing to build a database; requires destroying downloaded material on termination.",
+      "agreement_reference": null,
+      "approval": "NOT_APPROVED",
+      "blocking_reason": "Anti-corpus clause + destroy-on-termination forbid a retained training corpus. NOT usable for a production corpus.",
+      "satisfies_required_rights": false
+    },
+    "NewsData.io": {
+      "rights_status": "LEGAL_REVIEW_REQUIRED",
+      "storage_rights": true,
+      "ml_training_rights": false,
+      "commercial_use_rights": false,
+      "model_retention_rights": false,
+      "derived_dataset_rights": false,
+      "redistribution_rights": false,
+      "attribution_requirement": "UNKNOWN",
+      "source_specific_restrictions": "Provider states it does not have the right to authorise use of third-party content; derived-data/sublicense use is 'at your own risk'.",
+      "agreement_reference": null,
+      "approval": "NOT_APPROVED",
+      "blocking_reason": "No explicit ML-training / commercial / redistribution grant; requires written publisher/legal clearance before any collection.",
+      "satisfies_required_rights": false
+    }
+  },
+  "approved_sources": [],
+  "gate": {
+    "rights_approved": false,
+    "approved_source": null,
+    "production_corpus_ingestion_allowed": false,
+    "explanation": "No source currently satisfies all required rights with a verifiable agreement reference. Phases 25-30 (production ingestion/training/calibration/benchmarking/integration) are BLOCKED until an approved source exists. The 396 dev records remain RIGHTS_UNVERIFIED."
+  }
+}

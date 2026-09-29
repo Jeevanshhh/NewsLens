@@ -19,6 +19,7 @@ from app.schemas.article import Article
 from app.schemas.processed_article import ProcessedArticle
 from app.services.processing import classifier, extractor
 from app.services.processing.deduplicator import deduplicate
+from app.services.processing.model_text import build_model_text
 from app.services.processing.news_topics import predict_topic
 from app.services.processing.domain_config import (
     DEFAULT_CONFIG,
@@ -32,7 +33,10 @@ from app.services.processing.normalizer import (
 
 
 def enrich(article: Article, config: ClassificationConfig) -> ProcessedArticle:
-    full_text = f"{article.title} {article.description or ''}"
+    # Shared canonical MODEL_TEXT (title + description), identical to the
+    # training-side preprocessing (see model_text.build_model_text). This is the
+    # single source of truth that removes the historic train/serve skew.
+    full_text = build_model_text(article.title, article.description)
 
     exam = classifier.detect_exam(full_text, config)
     state = classifier.detect_state(full_text, config)

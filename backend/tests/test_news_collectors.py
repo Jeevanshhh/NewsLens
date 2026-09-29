@@ -82,7 +82,9 @@ def test_google_news_maps_entries_and_date_operators(monkeypatch):
     assert articles[1].source is None
     # date operators + locale are encoded into the RSS query
     assert "after%3A2026-06-01" in captured["url"]
-    assert "before%3A2026-08-31" in captured["url"]
+    # before: is midnight-exclusive at Google, so the service shifts +1 day
+    # to make to_date inclusive (QA bug N4, 2026-09-28): 2026-08-31 -> 2026-09-01
+    assert "before%3A2026-09-01" in captured["url"]
     assert "hl=en-IN" in captured["url"]
     assert "gl=IN" in captured["url"]
 

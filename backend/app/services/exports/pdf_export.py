@@ -6,7 +6,9 @@ from the *actual* rows passed in - nothing is fabricated.
 """
 from __future__ import annotations
 
+import html
 import io
+import re
 from typing import List
 
 from reportlab.lib import colors
@@ -14,6 +16,7 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
+    LongTable,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -36,6 +39,30 @@ _COL_WIDTHS = {
     "reason": 30 * mm,
 }
 _DEFAULT_WIDTH = 16 * mm
+
+# Per-column render caps. Google News URLs are very long unbroken tokens;
+# ReportLab splits over-long words character-by-character, producing rows
+# taller than the page frame (LayoutError => HTTP 500 on big exports).
+# Truncating display text keeps every row page-sized without touching the
+# underlying data (CSV/XLSX/DOCX still carry the full values).
+_MAX_CELL_CHARS = {
+    "title": 160,
+    "reason": 120,
+    "url": 70,
+}
+_DEFAULT_MAX_CHARS = 60
+_TAG_RE = re.compile(r"<[^>]*>")
+
+
+def _pdf_cell_text(row: dict, key: str) -> str:
+    text = _TAG_RE.sub(" ", cell(row, key))
+    text = html.unescape(re.sub(r"\s+", " ", text)).strip()
+    # Escape markup so Paragraph never mis-parses publisher text.
+    text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    limit = _MAX_CELL_CHARS.get(key, _DEFAULT_MAX_CHARS)
+    if len(text) > limit:
+        text = text[: limit - 1] + "\u2026"
+    return text or "\u2014"
 
 
 def _table_style() -> TableStyle:
@@ -119,12 +146,13 @@ def build_pdf(rows: List[dict], meta: dict) -> bytes:
     for r in rows:
         body.append(
             [
-                Paragraph(cell(r, key), styles["BodyText"])
+                Paragraph(_pdf_cell_text(r, key), styles["BodyText"])
                 for _, key in EXPORT_COLUMNS
             ]
         )
     widths = [_COL_WIDTHS.get(key, _DEFAULT_WIDTH) for _, key in EXPORT_COLUMNS]
-    article_table = Table(body, colWidths=widths, repeatRows=1)
+    # LongTable streams rows across pages instead of demanding one giant frame.
+    article_table = LongTable(body, colWidths=widths, repeatRows=1)
     article_table.setStyle(_table_style())
     flow.append(article_table)
 
